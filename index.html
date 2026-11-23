@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI 情緒分析助手</title>
+<style>
+  :root {
+    --bg: #0b0d17;
+    --bg-soft: #141826;
+    --card: #171b2c;
+    --card-2: #1d2236;
+    --border: #2a3050;
+    --text: #e7e9f3;
+    --muted: #9aa0bd;
+    --accent: #7c5cff;
+    --accent-2: #ff5ca8;
+    --green: #3ddc97;
+    --red: #ff6b6b;
+    --shadow: 0 10px 40px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, rgba(124,92,255,.18), transparent 60%),
+                radial-gradient(900px 500px at 0% 0%, rgba(255,92,168,.12), transparent 55%),
+                var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { text-align: center; margin-bottom: 36px; }
+  .badge {
+    display: inline-block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; margin-bottom: 16px; background: var(--bg-soft);
+  }
+  h1 { font-size: clamp(28px, 5vw, 44px); margin: 8px 0 10px; line-height: 1.1; }
+  h1 .grad {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { color: var(--muted); font-size: 17px; max-width: 620px; margin: 0 auto; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 20px; }
+  .card .hint { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  .demo-live {
+    border: 1px solid rgba(124,92,255,.4);
+    background: linear-gradient(180deg, rgba(124,92,255,.08), rgba(255,92,168,.04));
+  }
+  textarea {
+    width: 100%; min-height: 90px; resize: vertical; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg-soft); color: var(--text);
+    padding: 14px; font-size: 15px; font-family: inherit; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  button {
+    border: none; cursor: pointer; border-radius: 10px; padding: 11px 18px;
+    font-size: 15px; font-weight: 600; color: white;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: transform .08s ease, opacity .2s ease;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .chip {
+    background: var(--card-2); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 7px 13px; font-size: 13px; cursor: pointer;
+  }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+  .status { font-size: 14px; color: var(--muted); margin-top: 14px; min-height: 20px; }
+  .bar { height: 6px; border-radius: 4px; background: var(--bg-soft); overflow: hidden; margin-top: 10px; display: none; }
+  .bar > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s ease; }
+  .result { margin-top: 18px; display: none; }
+  .verdict { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; }
+  .meter { margin-top: 12px; }
+  .meter .track { height: 10px; border-radius: 6px; background: var(--bg-soft); overflow: hidden; }
+  .meter .fill { height: 100%; width: 0%; transition: width .5s ease; }
+  .meter .lbl { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .mini {
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 14px; padding: 18px;
+  }
+  .mini .emoji { font-size: 24px; }
+  .mini h3 { margin: 8px 0 6px; font-size: 16px; }
+  .mini p { margin: 0; color: var(--muted); font-size: 14px; }
+  .mini .tag { display:inline-block; margin-top:10px; font-size:12px; color: var(--accent); border:1px solid var(--border); border-radius:999px; padding:3px 9px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  td .y { color: var(--green); } td .n { color: var(--red); }
+  code {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 6px;
+    padding: 1px 6px; font-size: 13px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; overflow-x: auto; font-size: 13px; line-height: 1.5;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; color: #cdd3f0;
+  }
+  a { color: var(--accent); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 10px; }
+  .note { font-size: 13px; color: var(--muted); }
+  .history-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .history-toolbar h2 { margin: 0; }
+  .history-scroll { overflow-x: auto; }
+  .history-table { min-width: 640px; table-layout: fixed; }
+  .history-table th:nth-child(1) { width: 165px; }
+  .history-table th:nth-child(3), .history-table th:nth-child(4) { width: 90px; }
+  .history-table th:nth-child(5) { width: 80px; }
+  .history-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .history-delete { padding: 7px 12px; font-size: 14px; }
+  .history-empty { text-align: center; color: var(--muted); padding: 24px 10px; }
+  .history-notice { color: #ffcf70; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="badge">靜態 Space · 直接在瀏覽器中執行</span>
+    <h1><span class="grad">AI 情緒分析助手</span></h1>
+    <p class="sub">透過 Hugging Face 靜態 Space，在瀏覽器中即時執行機器學習模型。往下試試看吧！</p>
+  </header>
+
+  <!-- LIVE ML DEMO -->
+  <section class="card demo-live">
+    <h2>🤖 即時情緒分析，完全在你的瀏覽器中執行</h2>
+    <p class="hint">不需要伺服器。DistilBERT 模型（約 67&nbsp;MB）會從 Hugging Face Hub 的內容傳遞網路下載，
+    並透過 <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">Transformers.js</a>
+    執行（使用 WebGPU，無法使用時改用 WASM）。首次使用會下載模型，之後會使用快取。</p>
+    <p class="hint">請輸入英文句子，AI 將自動判斷文字的正面或負面情緒。</p>
+
+    <textarea id="input" placeholder="請輸入英文句子…" aria-label="要分析的英文句子">I love how simple Hugging Face Spaces make it to share ML demos.</textarea>
+
+    <div class="row">
+      <button id="run" disabled>開始分析</button>
+      <span class="chip" data-ex="I absolutely love this, best thing ever.">正面情緒 😊</span>
+      <span class="chip" data-ex="This is the worst experience I've had in years.">負面情緒 😠</span>
+      <span class="chip" data-ex="The package arrived on Tuesday.">😐 偏中性的範例</span>
+    </div>
+
+    <div class="bar" id="bar"><i></i></div>
+    <div class="status" id="status">正在載入模型…</div>
+
+    <div class="result" id="result">
+      <div class="verdict"><span class="dot" id="dot"></span><span id="label"></span></div>
+      <div class="meter">
+        <div class="lbl"><span>信心分數</span><span id="score"></span></div>
+        <div class="track"><div class="fill" id="fill"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="history-title">
+    <div class="history-toolbar">
+      <h2 id="history-title">歷史分析紀錄</h2>
+      <button id="clear-history" type="button" disabled>清空全部紀錄</button>
+    </div>
+    <p class="hint">保留最近 100 筆分析紀錄，最新紀錄顯示在最上方。紀錄僅儲存在目前瀏覽器，時間依裝置時區顯示。</p>
+    <p id="history-notice" class="history-notice" role="status" hidden></p>
+    <div class="history-scroll" role="region" aria-label="歷史分析紀錄表格" tabindex="0">
+      <table class="history-table" aria-labelledby="history-title">
+        <thead>
+          <tr><th scope="col">分析時間</th><th scope="col">輸入文字</th><th scope="col">分析結果</th><th scope="col">信心分數</th><th scope="col">操作</th></tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="5" class="history-empty">目前尚無分析紀錄</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- WHAT IS A SPACE -->
+  <section class="card">
+    <h2>🧬 什麼是 Space？</h2>
+    <p class="hint">每個 Space 都是一個<strong>程式碼儲存庫</strong>。透過 <code>README.md</code>
+    檔案開頭的設定區塊，就能設定執行環境、開發套件、硬體與標題。</p>
+    <pre>---
+title: AI 情緒分析助手
+emoji: 🧪
+sdk: static          # 可選用 gradio、docker 或 static
+pinned: false
+---</pre>
+    <p class="note">目前的 Space 就是使用這種設定方式。變更 <code>sdk:</code>，就能調整
+    Hugging Face 建置與提供服務的應用程式類型。</p>
+  </section>
+
+  <!-- THREE SDKS -->
+  <section class="card">
+    <h2>🛠️ 建立 Space 的三種方式</h2>
+    <p class="hint">選擇適合應用程式的開發套件。</p>
+    <div class="grid">
+      <div class="mini">
+        <div class="emoji">🐍</div>
+        <h3>Gradio</h3>
+        <p>以 Python 開發，是最常見的 Space 類型。只需幾行 <code>gr.Interface(...)</code>，
+        就能建立操作介面並自動產生 REST/MCP API，也支援 ZeroGPU。</p>
+        <span class="tag">需要運算資源</span>
+      </div>
+      <div class="mini">
+        <div class="emoji">📦</div>
+        <h3>Docker</h3>
+        <p>自由選擇容器與技術組合，例如 Streamlit、FastAPI、Node、Rust。
+        透過 <code>Dockerfile</code> 完整掌控環境，適合超出 Gradio 支援範圍的需求。</p>
+        <span class="tag">需要運算資源</span>
+      </div>
+      <div class="mini">
+        <div class="emoji">⚡</div>
+        <h3>靜態網頁</h3>
+        <p>使用 HTML/JS，或建置完成的 React/Vue/Svelte 應用程式，搭配 WebGPU/WASM 在瀏覽器中執行機器學習。
+        <strong>所有人皆可免費使用</strong>，目前的網頁就是一個範例。</p>
+        <span class="tag">免費 · 不需要伺服器硬體</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HARDWARE -->
+  <section class="card">
+    <h2>⚙️ 硬體方案</h2>
+    <p class="hint">靜態網頁不需要伺服器運算資源。Gradio 與 Docker 需要運算資源，通常需要付費方案；
+    免費帳號則有 ZeroGPU 這個例外選項。</p>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>方案</th><th>說明</th><th>免費帳號可用？</th></tr></thead>
+      <tbody>
+        <tr><td><strong>靜態網頁</strong></td><td>不需要伺服器，由瀏覽器執行</td><td class="y">✓ 不限數量</td></tr>
+        <tr><td><strong>ZeroGPU</strong></td><td>依請求提供 A10G 等級的 GPU 運算資源</td><td class="y">✓ 最多 2 個*</td></tr>
+        <tr><td><strong>cpu-basic</strong></td><td>2 個虛擬 CPU 核心 / 16&nbsp;GB 記憶體，持續執行</td><td class="n">✗ 需要付費方案</td></tr>
+        <tr><td><strong>專用 GPU</strong></td><td>T4 至 H200，按小時計費</td><td class="n">✗ 需要付費方案</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note">* 符合資格的免費個人帳號（已驗證電子郵件，且建立超過 30 天）可建立
+    最多 2 個 ZeroGPU Gradio Space。新帳號可以申請社群補助。</p>
+  </section>
+
+  <!-- CAPABILITIES -->
+  <section class="card">
+    <h2>✨ Space 的應用功能</h2>
+    <div class="grid">
+      <div class="mini"><h3>🔌 自動產生 API 與 MCP</h3><p>Gradio Space 也能提供 REST API 與
+        MCP 伺服器，讓函式成為可呼叫的工具。</p></div>
+      <div class="mini"><h3>🔐 機密與環境變數</h3><p>建立 Space 時或之後，都能以機密設定保存 API 金鑰，
+        並以環境變數提供公開設定。</p></div>
+      <div class="mini"><h3>💾 儲存桶</h3><p>Space 本身不保留狀態，但可以將儲存桶掛載至
+        <code>/data</code>，長期保存資料。</p></div>
+      <div class="mini"><h3>🧩 嵌入其他網頁</h3><p>每個 Space 都能透過 iframe 嵌入網頁，Gradio
+        Space 也提供 JavaScript 與 Python 用戶端。</p></div>
+      <div class="mini"><h3>🌐 模型推論服務供應商</h3><p>串接 Cerebras、Together、Fireworks 等服務，
+        不需要本機顯示記憶體也能執行大型模型。</p></div>
+      <div class="mini"><h3>👥 社群互動</h3><p>支援按讚、討論與複製，任何人都能一鍵建立
+        你的 Space 副本。</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>使用 <code>hf</code> 命令列工具建置與部署 · 靜態 Space ·
+       模型：<code>Xenova/distilbert-base-uncased-finetuned-sst-2-english</code></p>
+  </footer>
+
+</div>
+
+<script type="module">
+  import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+
+  // Allow remote model download from the HF Hub (default), disable noisy local checks.
+  env.allowLocalModels = false;
+
+  const inputEl  = document.getElementById('input');
+  const runEl    = document.getElementById('run');
+  const statusEl = document.getElementById('status');
+  const barEl    = document.getElementById('bar');
+  const barFill  = barEl.querySelector('i');
+  const resultEl = document.getElementById('result');
+  const dotEl    = document.getElementById('dot');
+  const labelEl  = document.getElementById('label');
+  const scoreEl  = document.getElementById('score');
+  const fillEl   = document.getElementById('fill');
+  const historyBody = document.getElementById('history-body');
+  const clearHistoryEl = document.getElementById('clear-history');
+  const historyNotice = document.getElementById('history-notice');
+  const HISTORY_KEY = 'tingyu-sentiment-history-v1';
+  const HISTORY_LIMIT = 100;
+
+  let classifier = null;
+  let isAnalyzing = false;
+  let history = loadHistory();
+
+  function showHistoryNotice(message) {
+    historyNotice.textContent = message;
+    historyNotice.hidden = !message;
+  }
+
+  function loadHistory() {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) throw new Error('Invalid history');
+      return parsed.filter(item => item && typeof item.id === 'string' &&
+        typeof item.timestamp === 'number' && Number.isFinite(new Date(item.timestamp).getTime()) &&
+        typeof item.text === 'string' && item.text.trim() &&
+        typeof item.positive === 'boolean' && typeof item.score === 'number' &&
+        Number.isFinite(item.score) && item.score >= 0 && item.score <= 1)
+        .sort((a, b) => b.timestamp - a.timestamp).slice(0, HISTORY_LIMIT);
+    } catch (err) {
+      showHistoryNotice('無法讀取歷史紀錄，可能是瀏覽器限制儲存功能或資料格式異常。本次仍可進行情緒分析。');
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      showHistoryNotice('');
+    } catch (err) {
+      showHistoryNotice('無法儲存歷史紀錄，可能是儲存空間不足或瀏覽器限制。變更僅保留於本頁，重新整理後可能遺失。');
+    }
+  }
+
+  function formatHistoryTime(timestamp) {
+    const date = new Date(timestamp);
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
+  function renderHistory() {
+    historyBody.replaceChildren();
+    clearHistoryEl.disabled = history.length === 0;
+    if (!history.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 5;
+      cell.className = 'history-empty';
+      cell.textContent = '目前尚無分析紀錄';
+      row.append(cell);
+      historyBody.append(row);
+      return;
+    }
+    for (const item of history) {
+      const row = document.createElement('tr');
+      const values = [formatHistoryTime(item.timestamp), item.text,
+        item.positive ? '正面' : '負面', `${(item.score * 100).toFixed(1)}%`];
+      values.forEach((value, index) => {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        if (index === 1) cell.className = 'history-text';
+        row.append(cell);
+      });
+      const actions = document.createElement('td');
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'history-delete';
+      deleteButton.textContent = '刪除';
+      deleteButton.setAttribute('aria-label', `刪除 ${formatHistoryTime(item.timestamp)} 的分析紀錄`);
+      deleteButton.addEventListener('click', () => {
+        history = history.filter(entry => entry.id !== item.id);
+        saveHistory();
+        renderHistory();
+      });
+      actions.append(deleteButton);
+      row.append(actions);
+      historyBody.append(row);
+    }
+  }
+
+  function addHistory(text, positive, score) {
+    history.unshift({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      timestamp: Date.now(), text, positive, score
+    });
+    history = history.slice(0, HISTORY_LIMIT);
+    saveHistory();
+    renderHistory();
+  }
+
+  clearHistoryEl.addEventListener('click', () => {
+    if (!history.length || !window.confirm('確定要清空全部分析紀錄嗎？此操作無法復原。')) return;
+    history = [];
+    saveHistory();
+    renderHistory();
+  });
+  renderHistory();
+
+  // Example chips
+  document.querySelectorAll('.chip[data-ex]').forEach(c => {
+    c.addEventListener('click', () => { inputEl.value = c.dataset.ex; if (classifier) run(); });
+  });
+
+  async function init() {
+    try {
+      barEl.style.display = 'block';
+      classifier = await pipeline(
+        'sentiment-analysis',
+        'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+        {
+          progress_callback: (p) => {
+            if (p.status === 'progress' && p.total) {
+              const pct = Math.round((p.loaded / p.total) * 100);
+              barFill.style.width = pct + '%';
+              statusEl.textContent = `正在下載${p.file || '模型'}… ${pct}%`;
+            } else if (p.status === 'ready') {
+              statusEl.textContent = '模型已就緒。';
+            }
+          }
+        }
+      );
+      barEl.style.display = 'none';
+      statusEl.textContent = '✅ 模型已載入並快取，可以開始分析。';
+      runEl.disabled = false;
+      run(false); // Keep the initial preview without adding a user history entry.
+    } catch (err) {
+      barEl.style.display = 'none';
+      statusEl.textContent = '⚠️ 無法載入模型：' + (err?.message || err) +
+        '。請重新整理網頁後再試一次，Hugging Face Hub 的內容傳遞網路可能暫時無法連線。';
+      console.error(err);
+    }
+  }
+
+  async function run(recordHistory = true) {
+    const text = inputEl.value.trim();
+    if (!text || !classifier || isAnalyzing) return;
+    isAnalyzing = true;
+    runEl.disabled = true;
+    statusEl.textContent = '正在分析…';
+    try {
+      const out = await classifier(text);
+      const { label, score } = out[0];
+      const positive = label.toUpperCase() === 'POSITIVE';
+      const pct = (score * 100).toFixed(1);
+
+      dotEl.style.background = positive ? 'var(--green)' : 'var(--red)';
+      labelEl.textContent = positive ? '正面情緒 😊' : '負面情緒 😠';
+      scoreEl.textContent = pct + '%';
+      fillEl.style.width = pct + '%';
+      fillEl.style.background = positive ? 'var(--green)' : 'var(--red)';
+      resultEl.style.display = 'block';
+      statusEl.textContent = '✅ 分析完成 — 推論過程完全在你的裝置上執行。';
+      if (recordHistory) addHistory(text, positive, score);
+    } catch (err) {
+      statusEl.textContent = '⚠️ 推論失敗：' + (err?.message || err);
+      console.error(err);
+    } finally {
+      isAnalyzing = false;
+      runEl.disabled = false;
+    }
+  }
+
+  runEl.addEventListener('click', () => run());
+  inputEl.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') run();
+  });
+
+  init();
+</script>
+</body>
+</html>
